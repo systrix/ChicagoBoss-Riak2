@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<module type="ERLANG_MODULE" version="4">
+  <component name="FacetManager">
+    <facet type="erlang" name="Erlang">
+      <configuration>
+        <parseTransforms>
+          <transform value="lager_transform" />
+          <transform value="cut" />
+          <transform value="do" />
+          <transform value="import_as" />
+        </parseTransforms>
+      </configuration>
+    </facet>
+  </component>
+  <component name="NewModuleRootManager" inherit-compiler-output="false">
+    <output url="file://$MODULE_DIR$/ebin" />
+    <output-test url="file://$MODULE_DIR$/.eunit" />
+    <exclude-output />
+    <content url="file://$MODULE_DIR$">
+      <sourceFolder url="file://$MODULE_DIR$/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/test" isTestSource="true" />
+    </content>
+    <orderEntry type="inheritedJdk" />
+    <orderEntry type="sourceFolder" forTests="false" />
+    <orderEntry type="module" module-name="lager" />
+    <orderEntry type="module" module-name="poolboy" />
+    <orderEntry type="module" module-name="ddb" />
+    <orderEntry type="module" module-name="kernel" />
+    <orderEntry type="module" module-name="epgsql" />
+    <orderEntry type="module" module-name="tiny_pq" />
+    <orderEntry type="module" module-name="proper" />
+    <orderEntry type="module" module-name="erlando" />
+    <orderEntry type="module" module-name="redo" />
+    <orderEntry type="module" module-name="boss_test" />
+    <orderEntry type="module" module-name="stdlib" />
+    <orderEntry type="module" module-name="uuid" />
+    <orderEntry type="module" module-name="crypto" />
+    <orderEntry type="module" module-name="erlmc" />
+    <orderEntry type="module" module-name="aleppo" />
+    <orderEntry type="module" module-name="riakc" />
+    <orderEntry type="module" module-name="ets_cache" />
+    <orderEntry type="module" module-name="dh_date" />
+    <orderEntry type="module" module-name="mysql" />
+    <orderEntry type="module" module-name="medici" />
+    <orderEntry type="module" module-name="mongodb" />
+  </component>
+</module>
