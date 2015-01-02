@@ -120,13 +120,18 @@ delete(Conn, Id) ->
 save_record(Conn, Record) ->
     Type = element(1, Record),
     Bucket = list_to_binary(type_to_bucket_name(Type)),
-    PropList = [string:join(["\"", atom_to_list(K), "\":\"", V, "\","], "") || {K, V} <- Record:attributes(), K =/= id],
+    %PropList = [string:join(["\"", riak_search_encode_key(K), "\":", riak_search_encode_value(V), ","], "") || {K, V} <- Record:attributes(), K =/= id],
+    PropList = [string:join(["\"", atom_to_list(K), "\":", riak_encode_value(V), ","], "") || {K, V} <- Record:attributes(), K =/= id],
+    %PropList = [{riak_search_encode_key(K), riak_search_encode_value(V)} || {K, V} <- Record:attributes(), K =/= id],
     RiakKey = case Record:id() of
         id -> % New entry
         	  GUID       = uuid:to_string(uuid:uuid4()),
             IdPropList = string:join(["\"", atom_to_list(id), "\":\"", atom_to_list(Type), "-", GUID, "\"}"], ""),
             NewPropList = string:join(["{", PropList, IdPropList], ""),
+            io:format("~p", [NewPropList]),
+            %NewPropList = [{id, atom_to_list(Type) ++ "-" ++ GUID} | PropList],
             O		= riakc_obj:new(Bucket, list_to_binary(GUID), list_to_binary(NewPropList), atom_to_list('application/json')),
+            %O		= riakc_obj:new(Bucket, GUID, NewPropList, atom_to_list('application/json')),
             {ok, RO}	= riakc_pb_socket:put(Conn, O, [return_body]),
             element(3, RO);
         DefinedId when is_list(DefinedId) -> % Existing Entry
@@ -217,8 +222,10 @@ build_search_query([{Key, 'contains_none', Value}|Rest], Acc) ->
                                 lists:concat([Key, ":", escape_value(Val)])
                         end, Value), " OR "), ")"])|Acc]).
 
+quote_value(Value) when is_list(Value) ->
+    quote_value(Value, []);
 quote_value(Value) ->
-    quote_value(Value, []).
+    Value.
 
 quote_value([], Acc) ->
     [$"|lists:reverse([$"|Acc])];
@@ -259,3 +266,12 @@ riak_search_decode_value(V) when is_binary(V) ->
     binary_to_list(V);
 riak_search_decode_value(V) ->
     V.
+
+riak_encode_value(V) when is_list(V) ->
+    "\"" ++ V ++ "\"";
+riak_encode_value(V) when is_integer(V) ->
+    integer_to_list(V);
+riak_encode_value(V) when is_boolean(V) ->
+    atom_to_list(V);
+riak_encode_value(V) when is_float(V) ->
+    float_to_list(V).
