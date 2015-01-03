@@ -46,8 +46,15 @@ get_record_from_riak(Type, ConvertedData, AttributeTypes) ->
     Lambda = fun (AttrName) ->
 		     Val      = proplists:get_value(AttrName, ConvertedData),
 		     AttrType = proplists:get_value(AttrName, AttributeTypes),
-		     boss_record_lib:convert_value_to_type(Val, AttrType)
-             end,
+        % Added feature to allow parse the timestamp form solr indexing standar ISO8601 for date/time
+        case AttrType of
+            timestamp ->
+                [Y, M, D, H,Min, S] = string:tokens(Val, "-T:Z"),
+                DT = {{list_to_integer(Y), list_to_integer(M), list_to_integer(D)},{list_to_integer(H), list_to_integer(Min), list_to_integer(S)}},
+                boss_record_lib:convert_value_to_type(DT, AttrType);
+            _ -> boss_record_lib:convert_value_to_type(Val, AttrType)
+        end
+    end,
     apply(Type, new, lists:map(Lambda, boss_record_lib:attribute_names(Type))).
 
 find_acc(_, _, [], Acc) ->
@@ -222,10 +229,12 @@ build_search_query([{Key, 'contains_none', Value}|Rest], Acc) ->
                                 lists:concat([Key, ":", escape_value(Val)])
                         end, Value), " OR "), ")"])|Acc]).
 
+%quote_value({A,B,C}) ->
+%    riak_encode_value({A,B,C});
 quote_value(Value) when is_list(Value) ->
     quote_value(Value, []);
 quote_value(Value) ->
-    Value.
+    riak_encode_value(Value).
 
 quote_value([], Acc) ->
     [$"|lists:reverse([$"|Acc])];
@@ -274,4 +283,11 @@ riak_encode_value(V) when is_integer(V) ->
 riak_encode_value(V) when is_boolean(V) ->
     atom_to_list(V);
 riak_encode_value(V) when is_float(V) ->
-    float_to_list(V).
+    float_to_list(V);
+riak_encode_value({{Year,Month,Day},{Hour,Min,Sec}}) -> % DateTime must be in UTC
+    "\"" ++ lists:flatten(io_lib:format("~4w-~2..0w-~2..0wT~2..0w:~2..0w:~2..0wZ",
+        [Year,Month,Day,Hour,Min,Sec])) ++ "\"";
+riak_encode_value({A,B,C}) -> % DateTime must be in UTC
+    {{Year,Month,Day},{Hour,Min,Sec}} = calendar:now_to_datetime({A,B,C}),
+    "\"" ++ lists:flatten(io_lib:format("~4w-~2..0w-~2..0wT~2..0w:~2..0w:~2..0wZ",
+        [Year,Month,Day,Hour,Min,Sec])) ++ "\"".

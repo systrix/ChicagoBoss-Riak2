@@ -149,7 +149,7 @@ convert_value_to_type({{D1, D2, D3}, {T1, T2, T3}} = Val, integer) when is_integ
 convert_value_to_type({{D1, D2, D3}, {T1, T2, T3}} = Val, timestamp) when is_integer(D1), is_integer(D2), is_integer(D3), 
                                                                           is_integer(T1), is_integer(T2), is_integer(T3) ->
     Secs = calendar:datetime_to_gregorian_seconds(Val) - calendar:datetime_to_gregorian_seconds({{1970, 1, 1}, {0, 0, 0}}),
-    {Secs rem ?MILLION, Secs div ?MILLION, 0};
+    {Secs div 1000000, Secs rem 1000000, 0};
 convert_value_to_type({{D1, D2, D3}, {T1, T2, T3}} = Val, datetime) when is_integer(D1), is_integer(D2), is_integer(D3), 
                                                                          is_integer(T1), is_integer(T2), is_integer(T3) ->
     Val;

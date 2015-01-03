@@ -7,17 +7,10 @@
 %%% Created : 22. dic 2014 02:05 PM
 %%%-------------------------------------------------------------------
 -module(boss_db_indexer_riak).
--author("miguel").
+-author("miguel - miguel@systrix.net").
 -include_lib("kernel/include/file.hrl").
--compile([debug_info, {outdir, "/home/miguel/Descargas/hello_world"}]).
 %% API
 -export([indexing_model/2, files/2, run/0]).
-
-%indexing(Top, Re) ->
-%  {ok, Filenames} = file:list_dir(Top),
-%  indexing_files(Filenames),
-%  init:stop().
-
 
 %% Top is the Top directory where everything starts
 %% Re is a regular expression to match for (see module regexp)
