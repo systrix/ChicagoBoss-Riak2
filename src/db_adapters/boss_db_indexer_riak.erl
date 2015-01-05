@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @author miguel
+%%% @author miguel benitezhm@gmail.com
 %%% @copyright (C) 2014, <Systrix LLC>
 %%% @doc
 %%%

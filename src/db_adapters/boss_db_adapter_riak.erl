@@ -52,6 +52,10 @@ get_record_from_riak(Type, ConvertedData, AttributeTypes) ->
                 [Y, M, D, H,Min, S] = string:tokens(Val, "-T:Z"),
                 DT = {{list_to_integer(Y), list_to_integer(M), list_to_integer(D)},{list_to_integer(H), list_to_integer(Min), list_to_integer(S)}},
                 boss_record_lib:convert_value_to_type(DT, AttrType);
+            datetime ->
+                [Y, M, D, H,Min, S] = string:tokens(Val, "-T:Z"),
+                DT = {{list_to_integer(Y), list_to_integer(M), list_to_integer(D)},{list_to_integer(H), list_to_integer(Min), list_to_integer(S)}},
+                boss_record_lib:convert_value_to_type(DT, AttrType);
             _ -> boss_record_lib:convert_value_to_type(Val, AttrType)
         end
     end,
@@ -127,28 +131,26 @@ delete(Conn, Id) ->
 save_record(Conn, Record) ->
     Type = element(1, Record),
     Bucket = list_to_binary(type_to_bucket_name(Type)),
-    %PropList = [string:join(["\"", riak_search_encode_key(K), "\":", riak_search_encode_value(V), ","], "") || {K, V} <- Record:attributes(), K =/= id],
     PropList = [string:join(["\"", atom_to_list(K), "\":", riak_encode_value(V), ","], "") || {K, V} <- Record:attributes(), K =/= id],
-    %PropList = [{riak_search_encode_key(K), riak_search_encode_value(V)} || {K, V} <- Record:attributes(), K =/= id],
     RiakKey = case Record:id() of
         id -> % New entry
         	  GUID       = uuid:to_string(uuid:uuid4()),
             IdPropList = string:join(["\"", atom_to_list(id), "\":\"", atom_to_list(Type), "-", GUID, "\"}"], ""),
             NewPropList = string:join(["{", PropList, IdPropList], ""),
-            io:format("~p", [NewPropList]),
-            %NewPropList = [{id, atom_to_list(Type) ++ "-" ++ GUID} | PropList],
+            io:fwrite("PropList: ~p~n", [NewPropList]),
             O		= riakc_obj:new(Bucket, list_to_binary(GUID), list_to_binary(NewPropList), atom_to_list('application/json')),
-            %O		= riakc_obj:new(Bucket, GUID, NewPropList, atom_to_list('application/json')),
             {ok, RO}	= riakc_pb_socket:put(Conn, O, [return_body]),
             element(3, RO);
         DefinedId when is_list(DefinedId) -> % Existing Entry
             [_ | Tail]	= string:tokens(DefinedId, "-"),
             Key		= string:join(Tail, "-"),
             BinKey	= list_to_binary(Key),
+            IdPropList = string:join(["\"", atom_to_list(id), "\":\"", DefinedId, "\"}"], ""),
+            NewPropList = string:join(["{", PropList, IdPropList], ""),
             {ok, O}	= riakc_pb_socket:get(Conn, Bucket, BinKey),
-            O2		= riakc_obj:update_value(O, PropList),
+            O2		= riakc_obj:update_value(O, list_to_binary(NewPropList), atom_to_list('application/json')),
             ok		= riakc_pb_socket:put(Conn, O2),
-            Key
+            BinKey
     end,
     {ok, Record:set(id, lists:concat([Type, "-", binary_to_list(RiakKey)]))}.
 
