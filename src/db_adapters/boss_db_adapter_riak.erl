@@ -131,7 +131,7 @@ delete(Conn, Id) ->
 save_record(Conn, Record) ->
     Type = element(1, Record),
     Bucket = list_to_binary(type_to_bucket_name(Type)),
-    PropList = [string:join(["\"", atom_to_list(K), "\":", riak_encode_value(V), ","], "") || {K, V} <- Record:attributes(), K =/= id],
+    PropList = [string:join(["\"", atom_to_list(K), "\":", riak_encode_value(V), ","], "") || {K, V} <- Record:attributes(), K =/= id, V =/= undefined],
     RiakKey = case Record:id() of
         id -> % New entry
         	  GUID       = uuid:to_string(uuid:uuid4()),
