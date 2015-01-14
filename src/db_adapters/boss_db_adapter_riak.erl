@@ -44,19 +44,24 @@ query_riak_socket(_Id, _Type, _Socket = {error, Reason} ) ->
 
 get_record_from_riak(Type, ConvertedData, AttributeTypes) ->
     Lambda = fun (AttrName) ->
-		     Val      = proplists:get_value(AttrName, ConvertedData),
-		     AttrType = proplists:get_value(AttrName, AttributeTypes),
-        % Added feature to allow parse the timestamp form solr indexing standar ISO8601 for date/time
-        case AttrType of
-            timestamp ->
-                [Y, M, D, H,Min, S] = string:tokens(Val, "-T:Z"),
-                DT = {{list_to_integer(Y), list_to_integer(M), list_to_integer(D)},{list_to_integer(H), list_to_integer(Min), list_to_integer(S)}},
-                boss_record_lib:convert_value_to_type(DT, AttrType);
-            datetime ->
-                [Y, M, D, H,Min, S] = string:tokens(Val, "-T:Z"),
-                DT = {{list_to_integer(Y), list_to_integer(M), list_to_integer(D)},{list_to_integer(H), list_to_integer(Min), list_to_integer(S)}},
-                boss_record_lib:convert_value_to_type(DT, AttrType);
-            _ -> boss_record_lib:convert_value_to_type(Val, AttrType)
+        Val      = proplists:get_value(AttrName, ConvertedData),
+        AttrType = proplists:get_value(AttrName, AttributeTypes),
+        % Add validatio to filter the undefined fields in riak
+        case Val =/= undefined of
+            true ->
+                % Added feature to allow parse the timestamp form solr indexing standar ISO8601 for date/time
+                case AttrType of
+                    timestamp ->
+                        [Y, M, D, H,Min, S] = string:tokens(Val, "-T:Z"),
+                        DT = {{list_to_integer(Y), list_to_integer(M), list_to_integer(D)},{list_to_integer(H), list_to_integer(Min), list_to_integer(S)}},
+                        boss_record_lib:convert_value_to_type(DT, AttrType);
+                    datetime ->
+                        [Y, M, D, H,Min, S] = string:tokens(Val, "-T:Z"),
+                        DT = {{list_to_integer(Y), list_to_integer(M), list_to_integer(D)},{list_to_integer(H), list_to_integer(Min), list_to_integer(S)}},
+                        boss_record_lib:convert_value_to_type(DT, AttrType);
+                    _ -> boss_record_lib:convert_value_to_type(Val, AttrType)
+                end;
+            _ -> undefined
         end
     end,
     apply(Type, new, lists:map(Lambda, boss_record_lib:attribute_names(Type))).
