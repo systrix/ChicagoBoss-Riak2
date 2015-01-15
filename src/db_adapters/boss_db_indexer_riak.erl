@@ -37,7 +37,7 @@ files(Top, Re) ->
   case file:list_dir(Top) of
     {ok, Files} ->
       files(Top, Files, Re, []),
-      io:fwrite("If you are updating a schema remember to run \"rp(yz_index:reload(<<\"index_name\">>)).\" through riak attach~n");
+      lager:info("~n\tIf you are updating a schema remember to run \"rp(yz_index:reload(<<\"index_name\">>)).\" through riak attach~n");
     {error, Reason}  ->
       {error, {Top, Reason}}
   end.
@@ -105,8 +105,13 @@ get_all_lines(Device, FileName, IndexedFields) ->
       Data2 = {schema, [{name, Type}, {version, "1.5"}], Fields},
       Prolog = ["<?xml version=\"1.0\" encoding=\"UTF-8\"?>"],
       file:write_file("/tmp/" ++ Type ++ ".xml", xmerl:export_simple([Data2], xmerl_xml, [{prolog, Prolog}])),
-      io:format("XML File: ~s.xml~n", [Type]),
-      create_index("/tmp/" ++ Type ++ ".xml");
+      lager:info("XML File: ~s.xml~n", [Type]),
+      if
+        length(IndexedFields) > 0 ->
+          create_index("/tmp/" ++ Type ++ ".xml");
+        true ->
+          lager:info("Model ~p without indexed fields", [Type])
+      end;
     Line ->
       case re:run(Line, "%- indexed") of
         {match, _} ->
@@ -118,8 +123,8 @@ get_all_lines(Device, FileName, IndexedFields) ->
               FieldType = "string"
           end,
           Field = join_fields(re:split(RawField, "(?=[A-Z])"), []),
-          io:format("Field: ~s~n", [string:to_lower(Field)]),
-          io:format("Type: ~s~n", [FieldType]),
+          lager:info("Field: ~s~n", [string:to_lower(Field)]),
+          lager:info("Type: ~s~n", [FieldType]),
           Data = {field, [{name, string:to_lower(Field)}, get_solr_type(list_to_atom(FieldType)), {indexed, "true"}, {stored, "true"}], []},
           get_all_lines(Device, FileName, [Data | IndexedFields]);
         nomatch ->
@@ -160,34 +165,34 @@ create_index(XMLFile) ->
   [C|_] = H,
   Options = element(2, C),
   {ok, Conn} = init_db(Options),
-  io:fwrite("DB connection ready~n"),
+  lager:info("DB connection ready~n"),
   [_, IndexName, _] = string:tokens(XMLFile, "/."),
-  io:fwrite("IndexName ~s~n", [IndexName]),
+  lager:info("IndexName ~s~n", [IndexName]),
   Type = inflector:pluralize(IndexName),
-  io:fwrite("Type ~s~n", [list_to_binary(Type)]),
+  lager:info("Type ~s~n", [list_to_binary(Type)]),
   {ok, SchemaData} = file:read_file(XMLFile),
   %Install schema for search
   case riakc_pb_socket:create_search_schema(Conn, list_to_binary(Type), SchemaData) of
-    ok -> io:fwrite("Schema created successfully~n");
-    {error, Reason} -> io:fwrite(Reason)
+    ok -> lager:info("Schema created successfully~n");
+    {error, Reason} -> lager:error(Reason)
   end,
   timer:sleep(5000),
   % Create Index
   case riakc_pb_socket:create_search_index(Conn, list_to_binary(Type), list_to_binary(Type), []) of
-    ok -> io:fwrite("Index created successfully~n");
+    ok -> lager:info("Index created successfully~n");
     {error, ReasonI} -> io:fwrite(ReasonI)
   end,
   timer:sleep(5000),
   % Asociate with bucket
   case riakc_pb_socket:set_search_index(Conn, list_to_binary(Type), list_to_binary(Type)) of
-    ok -> io:fwrite("Index installed successfully on bucket~n");
+    ok -> lager:info("Index installed successfully on bucket~n");
     {error, _} ->
-      io:fwrite("The installation on the bucket has fail, retrying in 5 seconds...~n"),
+      lager:warning("The installation on the bucket has fail, retrying in 5 seconds...~n"),
       timer:sleep(5000),
       case riakc_pb_socket:set_search_index(Conn, list_to_binary(Type), list_to_binary(Type)) of
-        ok -> io:fwrite("Index installed successfully on bucket~n");
+        ok -> lager:info("Index installed successfully on bucket~n");
         {error, ReasonB2} ->
-          io:fwrite(ReasonB2)
+          lager:error(ReasonB2)
       end
   end,
   terminate(Conn).
