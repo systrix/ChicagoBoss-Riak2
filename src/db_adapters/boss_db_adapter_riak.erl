@@ -1,3 +1,4 @@
+%% -*- coding: utf-8 -*-
 -module(boss_db_adapter_riak).
 -behaviour(boss_db_adapter).
 -export([init/1, terminate/1, start/1, stop/0, find/2, find/3, find/7]).
@@ -280,6 +281,12 @@ riak_search_decode_key(K) ->
 
 riak_search_decode_value(V) when is_binary(V) ->
     binary_to_list(V);
+riak_search_decode_value(V) when is_list(V) ->
+  case unicode:bom_to_encoding(unicode:characters_to_binary(V)) of
+    {latin1, _} ->
+      binary_to_list(unicode:characters_to_binary(V));
+    _ -> V
+  end;
 riak_search_decode_value(V) ->
     V.
 
@@ -298,3 +305,11 @@ riak_encode_value({A,B,C}) -> % DateTime must be in UTC
     {{Year,Month,Day},{Hour,Min,Sec}} = calendar:now_to_datetime({A,B,C}),
     "\"" ++ lists:flatten(io_lib:format("~4w-~2..0w-~2..0wT~2..0w:~2..0w:~2..0wZ",
         [Year,Month,Day,Hour,Min,Sec])) ++ "\"".
+
+
+is_proplist(List) ->
+    is_list(List) andalso
+        lists:all(fun({_, _}) -> true;
+            (_)      -> false
+        end,
+        List).
