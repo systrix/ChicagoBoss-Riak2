@@ -81,26 +81,19 @@ find_acc(Conn, Prefix, [Id | Rest], Acc) ->
 % this is a stub just to make the tests runable
 find(Conn, Type, Conditions, Max, Skip, Sort, SortOrder) ->
     Bucket = type_to_bucket_name(Type), % return bucket name into list type
-    {ok, Keys} = get_keys(Conn, Conditions, Bucket),
-    Records = find_acc(Conn, atom_to_list(Type), Keys, []),
-    Sorted = if
-        is_atom(Sort) ->
-            lists:sort(fun (A, B) ->
-                        case SortOrder of
-                            ascending  -> A:Sort() =< B:Sort();
-                            descending -> A:Sort() > B:Sort()
-                        end
-                end,
-                Records);
-        true -> Records
-    end,
     case Max of
-        all -> lists:nthtail(Skip, Sorted);
-        Max when Skip < length(Sorted) ->
-            lists:sublist(Sorted, Skip + 1, Max);
-        _ ->
-            []
-    end.
+      all ->
+        Limit = 10;
+      Max ->
+        Limit = Max
+    end,
+
+    case Sort of
+      id -> SortField = "_yz_id desc";
+      Field -> SortField = atom_to_list(Field)
+    end,
+    {ok, Keys} = get_keys(Conn, Conditions, Bucket, Limit, Skip, SortField),
+    find_acc(Conn, atom_to_list(Type), Keys, []).
 
 get_keys(Conn, [], Bucket) ->
     riakc_pb_socket:list_keys(Conn, Bucket);
@@ -111,6 +104,12 @@ get_keys(Conn, Conditions, Bucket) ->
 			   proplists:get_value(<<"_yz_rk">>, X)
 		   end, KeysExt)}.
 
+get_keys(Conn, Conditions, Bucket, Max, Skip, Sort) ->
+  {ok, {search_results, KeysExt, _, _}} = riakc_pb_socket:search(
+    Conn, list_to_binary(Bucket), list_to_binary(build_search_query(Conditions)), [{rows, Max}, {start, Skip}, {sort, Sort}]),
+  {ok, lists:map(fun ({_,X}) ->
+    proplists:get_value(<<"_yz_rk">>, X)
+  end, KeysExt)}.
 
 % this is a stub just to make the tests runable
 count(Conn, Type, Conditions) ->
@@ -313,3 +312,9 @@ is_proplist(List) ->
             (_)      -> false
         end,
         List).
+
+
+build_options_query([], OptionsList) ->
+  OptionsList;
+build_options_query([{limit, Val}|Tail], OptionsList) ->
+  build_options_query(Tail, lists:append(OptionsList, [{rows, Val}])).
