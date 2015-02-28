@@ -83,7 +83,7 @@ find(Conn, Type, Conditions, Max, Skip, Sort, SortOrder) ->
     Bucket = type_to_bucket_name(Type), % return bucket name into list type
 
     Limit = case Max of
-              all -> 10;
+              all -> count(Conn, Type, Conditions);
               Max -> Max
             end,
 
@@ -124,7 +124,16 @@ get_keys(Conn, Conditions, Bucket, Max, Skip, Sort) ->
 
 % this is a stub just to make the tests runable
 count(Conn, Type, Conditions) ->
-    length(find(Conn, Type, Conditions, all, 0, id, ascending)).
+  Bucket = type_to_bucket_name(Type),
+  {ok, {search_results, _, _, Count}} = case Conditions of
+                                          [] ->  riakc_pb_socket:search(Conn, list_to_binary(Bucket),
+                                            list_to_binary("_yz_id:*"),
+                                            [{rows, 1}, {start, 0}, {sort, "_yz_id desc"}]);
+                                          Cond -> riakc_pb_socket:search(Conn, list_to_binary(Bucket),
+                                            list_to_binary(build_search_query(Cond)),
+                                            [{rows, 1}, {start, 0}, {sort, "_yz_id desc"}])
+                                        end,
+  Count.
 
 counter(_Conn, _Id) ->
     {error, notimplemented}.
