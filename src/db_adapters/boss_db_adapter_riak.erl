@@ -323,9 +323,3 @@ is_proplist(List) ->
             (_)      -> false
         end,
         List).
-
-
-build_options_query([], OptionsList) ->
-  OptionsList;
-build_options_query([{limit, Val}|Tail], OptionsList) ->
-  build_options_query(Tail, lists:append(OptionsList, [{rows, Val}])).
