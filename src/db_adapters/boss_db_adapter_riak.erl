@@ -226,17 +226,17 @@ build_search_query([{Key, 'in', {Min, Max}}|Rest], Acc) ->
 build_search_query([{Key, 'not_in', {Min, Max}}|Rest], Acc) ->
     build_search_query(Rest, [lists:concat(["NOT ", Key, ":", "[", Min, " TO ", Max, "]"])|Acc]);
 build_search_query([{Key, 'gt', Value}|Rest], Acc) ->
-    build_search_query(Rest, [lists:concat([Key, ":", "{", Value, " TO ", ?HUGE_INT, "}"])|Acc]);
+    build_search_query(Rest, [lists:concat([Key, ":", "[", (Value + 1), " TO *", "]"])|Acc]);
 build_search_query([{Key, 'lt', Value}|Rest], Acc) ->
-    build_search_query(Rest, [lists:concat([Key, ":", "{", -?HUGE_INT, " TO ", Value, "}"])|Acc]);
+    build_search_query(Rest, [lists:concat([Key, ":", "[*", " TO ", (Value - 1), "]"])|Acc]);
 build_search_query([{Key, 'ge', Value}|Rest], Acc) ->
-    build_search_query(Rest, [lists:concat([Key, ":", "[", Value, " TO ", ?HUGE_INT, "]"])|Acc]);
+    build_search_query(Rest, [lists:concat([Key, ":", "[", Value, " TO ", "*]"])|Acc]);
 build_search_query([{Key, 'le', Value}|Rest], Acc) ->
-    build_search_query(Rest, [lists:concat([Key, ":", "[", -?HUGE_INT, " TO ", Value, "]"])|Acc]);
+    build_search_query(Rest, [lists:concat([Key, ":", "[*", " TO ", Value, "]"])|Acc]);
 build_search_query([{Key, 'matches', Value}|Rest], Acc) ->
-    build_search_query(Rest, [lists:concat([Key, ":", Value])|Acc]);
+    build_search_query(Rest, [lists:concat([Key, ":/", Value, "/"])|Acc]);
 build_search_query([{Key, 'not_matches', Value}|Rest], Acc) ->
-    build_search_query(Rest, [lists:concat(["NOT ", Key, ":", Value])|Acc]);
+    build_search_query(Rest, [lists:concat(["NOT ", Key, ":/", Value, "/"])|Acc]);
 build_search_query([{Key, 'contains', Value}|Rest], Acc) ->
     build_search_query(Rest, [lists:concat([Key, ":*", escape_value(Value), "*"])|Acc]);
 build_search_query([{Key, 'not_contains', Value}|Rest], Acc) ->
