@@ -116,6 +116,7 @@ get_keys(Conn, [], Bucket, Max, Skip, Sort) ->
     proplists:get_value(<<"_yz_rk">>, X)
   end, KeysExt)};
 get_keys(Conn, Conditions, Bucket, Max, Skip, Sort) ->
+  lager:info("~p", [build_search_query(Conditions)]),
   {ok, {search_results, KeysExt, _, _}} = riakc_pb_socket:search(
     Conn, list_to_binary(Bucket), list_to_binary(build_search_query(Conditions)), [{rows, Max}, {start, Skip}, {sort, Sort}]),
   {ok, lists:map(fun ({_,X}) ->
@@ -125,6 +126,7 @@ get_keys(Conn, Conditions, Bucket, Max, Skip, Sort) ->
 % this is a stub just to make the tests runable
 count(Conn, Type, Conditions) ->
   Bucket = type_to_bucket_name(Type),
+  lager:info("~p", [build_search_query(Conditions)]),
   {ok, {search_results, _, _, Count}} = case Conditions of
                                           [] ->  riakc_pb_socket:search(Conn, list_to_binary(Bucket),
                                             list_to_binary("_yz_id:*"),
@@ -212,12 +214,12 @@ build_search_query([{Key, 'equals', Value}|Rest], Acc) ->
 build_search_query([{Key, 'not_equals', Value}|Rest], Acc) ->
     build_search_query(Rest, [lists:concat(["NOT ", Key, ":", quote_value(Value)])|Acc]);
 build_search_query([{Key, 'in', Value}|Rest], Acc) when is_list(Value) ->
-    build_search_query(Rest, [lists:concat(["(", string:join(lists:map(fun(Val) ->
-                                    lists:concat([Key, ":", quote_value(Val)])
+    build_search_query(Rest, [lists:concat([Key, ":", "(", string:join(lists:map(fun(Val) ->
+                                    lists:concat([quote_value(Val)])
                             end, Value), " OR "), ")"])|Acc]);
 build_search_query([{Key, 'not_in', Value}|Rest], Acc) when is_list(Value) ->
-    build_search_query(Rest, [lists:concat(["(", string:join(lists:map(fun(Val) ->
-                                    lists:concat(["NOT ", Key, ":", quote_value(Val)])
+    build_search_query(Rest, [lists:concat(["NOT ", Key, ":", "(", string:join(lists:map(fun(Val) ->
+                                    lists:concat([quote_value(Val)])
                             end, Value), " AND "), ")"])|Acc]);
 build_search_query([{Key, 'in', {Min, Max}}|Rest], Acc) ->
     build_search_query(Rest, [lists:concat([Key, ":", "[", Min, " TO ", Max, "]"])|Acc]);
@@ -236,9 +238,9 @@ build_search_query([{Key, 'matches', Value}|Rest], Acc) ->
 build_search_query([{Key, 'not_matches', Value}|Rest], Acc) ->
     build_search_query(Rest, [lists:concat(["NOT ", Key, ":", Value])|Acc]);
 build_search_query([{Key, 'contains', Value}|Rest], Acc) ->
-    build_search_query(Rest, [lists:concat([Key, ":", escape_value(Value)])|Acc]);
+    build_search_query(Rest, [lists:concat([Key, ":*", escape_value(Value), "*"])|Acc]);
 build_search_query([{Key, 'not_contains', Value}|Rest], Acc) ->
-    build_search_query(Rest, [lists:concat(["NOT ", Key, ":", escape_value(Value)])|Acc]);
+    build_search_query(Rest, [lists:concat(["NOT ", Key, ":*", escape_value(Value), "*"])|Acc]);
 build_search_query([{Key, 'contains_all', Value}|Rest], Acc) ->
     build_search_query(Rest, [lists:concat(["(", string:join(lists:map(fun(Val) ->
                                 lists:concat([Key, ":", escape_value(Val)])
@@ -273,7 +275,7 @@ quote_value([H|T], Acc) ->
 escape_value(Value) ->
     escape_value(Value, []).
 
-escape_value([], Acc) ->
+  escape_value([], Acc) ->
     lists:reverse(Acc);
 escape_value([H|T], Acc) when H=:=$+; H=:=$-; H=:=$&; H=:=$|; H=:=$!; H=:=$(; H=:=$);
                               H=:=$[; H=:=$]; H=:=${; H=:=$}; H=:=$^; H=:=$"; H=:=$~;

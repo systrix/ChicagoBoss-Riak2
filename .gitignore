@@ -8,3 +8,5 @@ erl_crash.dump
 /ebin
 *~
 *.sw?
+.idea/
+boss_db.iml
