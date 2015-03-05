@@ -210,35 +210,46 @@ build_search_query(Conditions) ->
 build_search_query([], Acc) ->
     lists:reverse(Acc);
 build_search_query([{Key, 'equals', Value}|Rest], Acc) ->
-    build_search_query(Rest, [lists:concat([Key, ":", quote_value(Value)])|Acc]);
+    {K, V} = check_key(Key, Value),
+    build_search_query(Rest, [lists:concat([K, ":", quote_value(V)])|Acc]);
 build_search_query([{Key, 'not_equals', Value}|Rest], Acc) ->
-    build_search_query(Rest, [lists:concat(["NOT ", Key, ":", quote_value(Value)])|Acc]);
+    {K, V} = check_key(Key, Value),
+    build_search_query(Rest, [lists:concat(["NOT ", K, ":", quote_value(V)])|Acc]);
 build_search_query([{Key, 'in', Value}|Rest], Acc) when is_list(Value) ->
-    build_search_query(Rest, [lists:concat([Key, ":", "(", string:join(lists:map(fun(Val) ->
+    {K, V} = check_key(Key, Value),
+    build_search_query(Rest, [lists:concat([K, ":", "(", string:join(lists:map(fun(Val) ->
                                     lists:concat([quote_value(Val)])
-                            end, Value), " OR "), ")"])|Acc]);
+                            end, V), " OR "), ")"])|Acc]);
 build_search_query([{Key, 'not_in', Value}|Rest], Acc) when is_list(Value) ->
-    build_search_query(Rest, [lists:concat(["NOT ", Key, ":", "(", string:join(lists:map(fun(Val) ->
+    {K, V} = check_key(Key, Value),
+    build_search_query(Rest, [lists:concat(["NOT ", K, ":", "(", string:join(lists:map(fun(Val) ->
                                     lists:concat([quote_value(Val)])
-                            end, Value), " AND "), ")"])|Acc]);
+                            end, V), " AND "), ")"])|Acc]);
 build_search_query([{Key, 'in', {Min, Max}}|Rest], Acc) ->
     build_search_query(Rest, [lists:concat([Key, ":", "[", Min, " TO ", Max, "]"])|Acc]);
 build_search_query([{Key, 'not_in', {Min, Max}}|Rest], Acc) ->
     build_search_query(Rest, [lists:concat(["NOT ", Key, ":", "[", Min, " TO ", Max, "]"])|Acc]);
 build_search_query([{Key, 'gt', Value}|Rest], Acc) ->
-    build_search_query(Rest, [lists:concat([Key, ":", "[", (Value + 1), " TO *", "]"])|Acc]);
+    {K, V} = check_key(Key, Value),
+    build_search_query(Rest, [lists:concat([K, ":", "[", (V + 1), " TO *", "]"])|Acc]);
 build_search_query([{Key, 'lt', Value}|Rest], Acc) ->
-    build_search_query(Rest, [lists:concat([Key, ":", "[*", " TO ", (Value - 1), "]"])|Acc]);
+    {K, V} = check_key(Key, Value),
+    build_search_query(Rest, [lists:concat([K, ":", "[*", " TO ", (V - 1), "]"])|Acc]);
 build_search_query([{Key, 'ge', Value}|Rest], Acc) ->
-    build_search_query(Rest, [lists:concat([Key, ":", "[", Value, " TO ", "*]"])|Acc]);
+    {K, V} = check_key(Key, Value),
+    build_search_query(Rest, [lists:concat([K, ":", "[", V, " TO ", "*]"])|Acc]);
 build_search_query([{Key, 'le', Value}|Rest], Acc) ->
-    build_search_query(Rest, [lists:concat([Key, ":", "[*", " TO ", Value, "]"])|Acc]);
+  {K, V} = check_key(Key, Value),
+    build_search_query(Rest, [lists:concat([K, ":", "[*", " TO ", V, "]"])|Acc]);
 build_search_query([{Key, 'matches', Value}|Rest], Acc) ->
-    build_search_query(Rest, [lists:concat([Key, ":/", Value, "/"])|Acc]);
+    {K, V} = check_key(Key, Value),
+    build_search_query(Rest, [lists:concat([K, ":/", V, "/"])|Acc]);
 build_search_query([{Key, 'not_matches', Value}|Rest], Acc) ->
-    build_search_query(Rest, [lists:concat(["NOT ", Key, ":/", Value, "/"])|Acc]);
+  {K, V} = check_key(Key, Value),
+    build_search_query(Rest, [lists:concat(["NOT ", K, ":/", V, "/"])|Acc]);
 build_search_query([{Key, 'contains', Value}|Rest], Acc) ->
-    build_search_query(Rest, [lists:concat([Key, ":*", escape_value(Value), "*"])|Acc]);
+    {K, V} = check_key(Key, Value),
+    build_search_query(Rest, [lists:concat([K, ":*", escape_value(V), "*"])|Acc]);
 build_search_query([{Key, 'not_contains', Value}|Rest], Acc) ->
     build_search_query(Rest, [lists:concat(["NOT ", Key, ":*", escape_value(Value), "*"])|Acc]);
 build_search_query([{Key, 'contains_all', Value}|Rest], Acc) ->
@@ -327,10 +338,8 @@ riak_encode_value({A,B,C}) -> % DateTime must be in UTC
     "\"" ++ lists:flatten(io_lib:format("~4w-~2..0w-~2..0wT~2..0w:~2..0w:~2..0wZ",
         [Year,Month,Day,Hour,Min,Sec])) ++ "\"".
 
-
-is_proplist(List) ->
-    is_list(List) andalso
-        lists:all(fun({_, _}) -> true;
-            (_)      -> false
-        end,
-        List).
+check_key(id, V) ->
+    {_, _, RK} = infer_type_from_id(V),
+    {'_yz_rk' , RK};
+check_key(K, V) ->
+    {K, V}.
