@@ -116,7 +116,6 @@ get_keys(Conn, [], Bucket, Max, Skip, Sort) ->
     proplists:get_value(<<"_yz_rk">>, X)
   end, KeysExt)};
 get_keys(Conn, Conditions, Bucket, Max, Skip, Sort) ->
-  lager:info("~p", [build_search_query(Conditions)]),
   {ok, {search_results, KeysExt, _, _}} = riakc_pb_socket:search(
     Conn, list_to_binary(Bucket), list_to_binary(build_search_query(Conditions)), [{rows, Max}, {start, Skip}, {sort, Sort}]),
   {ok, lists:map(fun ({_,X}) ->
@@ -126,7 +125,6 @@ get_keys(Conn, Conditions, Bucket, Max, Skip, Sort) ->
 % this is a stub just to make the tests runable
 count(Conn, Type, Conditions) ->
   Bucket = type_to_bucket_name(Type),
-  lager:info("~p", [build_search_query(Conditions)]),
   {ok, {search_results, _, _, Count}} = case Conditions of
                                           [] ->  riakc_pb_socket:search(Conn, list_to_binary(Bucket),
                                             list_to_binary("_yz_id:*"),
@@ -216,12 +214,12 @@ build_search_query([{Key, 'not_equals', Value}|Rest], Acc) ->
     {K, V} = check_key(Key, Value),
     build_search_query(Rest, [lists:concat(["NOT ", K, ":", quote_value(V)])|Acc]);
 build_search_query([{Key, 'in', Value}|Rest], Acc) when is_list(Value) ->
-    {K, V} = check_key(Key, Value),
+    {K, V} = check_key(Key, Value, []),
     build_search_query(Rest, [lists:concat([K, ":", "(", string:join(lists:map(fun(Val) ->
                                     lists:concat([quote_value(Val)])
                             end, V), " OR "), ")"])|Acc]);
 build_search_query([{Key, 'not_in', Value}|Rest], Acc) when is_list(Value) ->
-    {K, V} = check_key(Key, Value),
+    {K, V} = check_key(Key, Value, []),
     build_search_query(Rest, [lists:concat(["NOT ", K, ":", "(", string:join(lists:map(fun(Val) ->
                                     lists:concat([quote_value(Val)])
                             end, V), " AND "), ")"])|Acc]);
@@ -337,6 +335,13 @@ riak_encode_value({A,B,C}) -> % DateTime must be in UTC
     {{Year,Month,Day},{Hour,Min,Sec}} = calendar:now_to_datetime({A,B,C}),
     "\"" ++ lists:flatten(io_lib:format("~4w-~2..0w-~2..0wT~2..0w:~2..0w:~2..0wZ",
         [Year,Month,Day,Hour,Min,Sec])) ++ "\"".
+
+
+check_key(id, [], Acc) ->
+{'_yz_rk' , Acc};
+check_key(id, [H|T], Acc) ->
+  {_, _, RK} = infer_type_from_id(H),
+  check_key(id, T, lists:append(Acc, [binary_to_list(RK)])).
 
 check_key(id, V) ->
     {_, _, RK} = infer_type_from_id(V),
