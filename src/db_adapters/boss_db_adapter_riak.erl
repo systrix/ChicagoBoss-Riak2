@@ -222,7 +222,7 @@ build_search_query([{Key, 'not_in', Value}|Rest], Acc) when is_list(Value) ->
     {K, V} = check_key(Key, Value, []),
     build_search_query(Rest, [lists:concat(["NOT ", K, ":", "(", string:join(lists:map(fun(Val) ->
                                     lists:concat([quote_value(Val)])
-                            end, V), " AND "), ")"])|Acc]);
+                            end, V), " OR "), ")"])|Acc]);
 build_search_query([{Key, 'in', {Min, Max}}|Rest], Acc) ->
     build_search_query(Rest, [lists:concat([Key, ":", "[", Min, " TO ", Max, "]"])|Acc]);
 build_search_query([{Key, 'not_in', {Min, Max}}|Rest], Acc) ->
