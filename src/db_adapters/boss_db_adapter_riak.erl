@@ -338,10 +338,13 @@ riak_encode_value({A,B,C}) -> % DateTime must be in UTC
 
 
 check_key(id, [], Acc) ->
-{'_yz_rk' , Acc};
+    {'_yz_rk', Acc};
 check_key(id, [H|T], Acc) ->
-  {_, _, RK} = infer_type_from_id(H),
-  check_key(id, T, lists:append(Acc, [binary_to_list(RK)])).
+    {_, _, RK} = infer_type_from_id(H),
+    check_key(id, T, lists:append(Acc, [binary_to_list(RK)]));
+check_key(Key, List, _Acc) ->
+    {Key, List}.
+
 
 check_key(id, V) ->
     {_, _, RK} = infer_type_from_id(V),
