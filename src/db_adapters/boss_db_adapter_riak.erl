@@ -154,6 +154,10 @@ delete(Conn, Id) ->
 % {'riakc_obj','undefined' | binary(),'undefined' | binary(),'undefined',[],'undefined','undefined' | binary()} and the contract is 
 % (bucket(),key(),value()) -> riakc_obj()
 save_record(Conn, Record) ->
+    {ok, Config} = file:consult("boss.config"),
+    [H|_] = Config,
+    [C|_] = H,
+    Options = element(2, C),
     Type = element(1, Record),
     Bucket = list_to_binary(type_to_bucket_name(Type)),
     PropList = [string:join(["\"", atom_to_list(K), "\":", riak_encode_value(V), ","], "") || {K, V} <- Record:attributes(), K =/= id, V =/= undefined],
@@ -177,6 +181,7 @@ save_record(Conn, Record) ->
             ok		= riakc_pb_socket:put(Conn, O2),
             BinKey
     end,
+    timer:sleep(proplists:get_value(solr_timeout, Options, 0)),
     {ok, Record:set(id, lists:concat([Type, "-", binary_to_list(RiakKey)]))}.
 
 % These 2 functions are not part of the behaviour but are required for

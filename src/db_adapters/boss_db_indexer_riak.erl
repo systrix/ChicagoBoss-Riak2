@@ -165,32 +165,32 @@ create_index(XMLFile) ->
   [C|_] = H,
   Options = element(2, C),
   {ok, Conn} = init_db(Options),
-  lager:info("DB connection ready~n"),
+  lager:info("DB connection ready"),
   [_, IndexName, _] = string:tokens(XMLFile, "/."),
-  lager:info("IndexName ~s~n", [IndexName]),
+  lager:info("IndexName ~s", [IndexName]),
   Type = inflector:pluralize(IndexName),
   lager:info("Type ~s~n", [list_to_binary(Type)]),
   {ok, SchemaData} = file:read_file(XMLFile),
   %Install schema for search
   case riakc_pb_socket:create_search_schema(Conn, list_to_binary(Type), SchemaData) of
-    ok -> lager:info("Schema created successfully~n");
+    ok -> lager:info("Schema created successfully");
     {error, Reason} -> lager:error(Reason)
   end,
   timer:sleep(5000),
   % Create Index
   case riakc_pb_socket:create_search_index(Conn, list_to_binary(Type), list_to_binary(Type), []) of
-    ok -> lager:info("Index created successfully~n");
+    ok -> lager:info("Index created successfully");
     {error, ReasonI} -> io:fwrite(ReasonI)
   end,
   timer:sleep(5000),
   % Asociate with bucket
   case riakc_pb_socket:set_search_index(Conn, list_to_binary(Type), list_to_binary(Type)) of
-    ok -> lager:info("Index installed successfully on bucket~n");
+    ok -> lager:info("Index installed successfully on bucket");
     {error, _} ->
-      lager:warning("The installation on the bucket has fail, retrying in 5 seconds...~n"),
+      lager:warning("The installation on the bucket has fail, retrying in 5 seconds..."),
       timer:sleep(5000),
       case riakc_pb_socket:set_search_index(Conn, list_to_binary(Type), list_to_binary(Type)) of
-        ok -> lager:info("Index installed successfully on bucket~n");
+        ok -> lager:info("Index installed successfully on bucket");
         {error, ReasonB2} ->
           lager:error(ReasonB2)
       end
